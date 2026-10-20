@@ -1,0 +1,23 @@
+name: Fortnite Version Checker
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check version and notify
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          CURRENT=$(curl -s https://fortnite-api.com/v2/aes | jq -r '.data.build // empty')
+          echo "Current build: $CURRENT"
+          
+          if [ -n "$CURRENT" ]; then
+            curl -s -H "Content-Type: application/json" \
+              -d "{\"content\":\"**New Fortnite version check**\\nBuild: \`$CURRENT\`\"}" \
+              "$WEBHOOK_URL"
+          fi
