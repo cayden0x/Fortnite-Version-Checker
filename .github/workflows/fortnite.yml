@@ -9,15 +9,35 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check version and notify
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Check for new version
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: |
           CURRENT=$(curl -s https://fortnite-api.com/v2/aes | jq -r '.data.build // empty')
           echo "Current build: $CURRENT"
-          
-          if [ -n "$CURRENT" ]; then
+
+          LAST=""
+          if [ -f last_version.txt ]; then
+            LAST=$(cat last_version.txt)
+          fi
+
+          echo "Last known: $LAST"
+
+          if [ -n "$CURRENT" ] && [ "$CURRENT" != "$LAST" ]; then
+            echo "New version detected!"
             curl -s -H "Content-Type: application/json" \
-              -d "{\"content\":\"**New Fortnite version check**\\nBuild: \`$CURRENT\`\"}" \
+              -d "{\"content\":\"**New Fortnite version**\\n\\`$CURRENT\\`\"}" \
               "$WEBHOOK_URL"
+            
+            echo "$CURRENT" > last_version.txt
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add last_version.txt
+            git commit -m "Update last version to $CURRENT" || true
+            git push
+          else
+            echo "No change"
           fi
